@@ -3,14 +3,17 @@ const cors = require("cors");
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+    origin: "*",
+    credentials: true,
+}));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-app.get("/", (req, res) => {
-    res.status(200).json({
-        success: true,
-        message: "Doctor Tracking System API is running"
-    });
-});
+
+app.use('/api/v1', require('./routes/index.routes'));
+
+app.use(require('./middlewares/not-found.middleware'));
+app.use(require('./middlewares/error.middleware'));
 
 module.exports = app;
