@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const userSchema = new mongoose.Schema({
+const doctorSchema = new mongoose.Schema({
     name: {
         type: String,
         required: [true, 'Name is required'],
@@ -24,12 +24,15 @@ const userSchema = new mongoose.Schema({
     email: {
         type: String,
         required: [true, 'Email is required'],
-        unique: true,
         lowercase: true,
         trim: true,
     }
 },{timestamps: true});
 
-const Doctor = mongoose.model('Doctor', userSchema);
+doctorSchema.index({ email: 1 });
+doctorSchema.index({ specialization: 1 });
+doctorSchema.index({ createdAt: -1 })
+
+const Doctor = mongoose.model('Doctor', doctorSchema);
 
 module.exports = Doctor;
