@@ -9,7 +9,7 @@ const createDoctor = async (data) => {
     try {
         return await Doctor.create(data);
     } catch (error) {
-        if(error.code === 11000){
+        if (error.code === 11000) {
             throw new AppError("Doctor email already exists", 409);
         }
 
@@ -17,9 +17,105 @@ const createDoctor = async (data) => {
     }
 };
 
+const getDoctors = async (filters) => {
+    const { page, limit, search, specialization, hospital, startDate, endDate, sortBy, sortOrder } = filters;
+
+    const query = {};
+
+    if(search) {
+        query.name = {
+            $regex: escapeRegex(search),
+            $options: "i",
+        }
+    }
+
+    if(specialization) {
+        query.specialization = {
+            $regex: escapeRegex(specialization),
+            $options: "i"
+        }
+    }
+
+    if(hospital) {
+        query.hospital = {
+            $regex: escapeRegex(hospital),
+            $options: "i"
+        }
+    }
+
+    if(startDate || endDate){
+        query.createdAt = {};
+
+        if(startDate){
+            const start = new Date(startDate);
+            start.setHours(0, 0, 0, 0);
+            query.createdAt.$gte = start;
+        }
+
+        if(endDate){
+            const end = new Date(endDate);
+            end.setHours(24, 0, 0, 0);
+            query.createdAt.$lt = end
+        }
+    }
+
+    const skip = (page - 1) * limit;
+
+    const sort = {
+        [sortBy]: sortOrder === "asc" ? 1 : -1
+    };
+
+    const [doctors, total] = await Promise.all([
+        Doctor.find(query).sort(sort).skip(skip).limit(limit).lean(),
+        Doctor.countDocuments(query)
+    ]);
+
+    return {
+        doctors,
+        pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total/limit)
+        }
+    }
+};
+
+const getDoctorById = async (id) => {
+    console.log({id});
+    const doctor = await Doctor.findOne({_id: id});
+
+    if(!doctor){
+        throw new AppError("Doctor not found!", 404);
+    }
+
+    return doctor;
+};
+
+const updateDoctor = async (id, data) => {
+    try {
+        const doctor = Doctor.findByIdAndUpdate(id, data, { new: true, runValidators: true });
+
+        if(!doctor){
+            throw new AppError("No Doctor found to update", 404);
+        }
+
+        return doctor;
+    } catch (error) {
+        if(error.code === 11000){
+            throw new AppError("Doctor email aleady exists", 409);
+        }
+
+        throw error;
+    }
+}
+
 
 
 module.exports = {
     escapeRegex,
-    createDoctor
+    createDoctor,
+    getDoctors,
+    getDoctorById,
+    updateDoctor,
 }
