@@ -1,4 +1,5 @@
 const Doctor = require("../models/doctor.model");
+const Patient = require("../models/patient.model");
 const AppError = require("../utils/app-error");
 
 const escapeRegex = (value) => {
@@ -22,37 +23,37 @@ const getDoctors = async (filters) => {
 
     const query = {};
 
-    if(search) {
+    if (search) {
         query.name = {
             $regex: escapeRegex(search),
             $options: "i",
         }
     }
 
-    if(specialization) {
+    if (specialization) {
         query.specialization = {
             $regex: escapeRegex(specialization),
             $options: "i"
         }
     }
 
-    if(hospital) {
+    if (hospital) {
         query.hospital = {
             $regex: escapeRegex(hospital),
             $options: "i"
         }
     }
 
-    if(startDate || endDate){
+    if (startDate || endDate) {
         query.createdAt = {};
 
-        if(startDate){
+        if (startDate) {
             const start = new Date(startDate);
             start.setHours(0, 0, 0, 0);
             query.createdAt.$gte = start;
         }
 
-        if(endDate){
+        if (endDate) {
             const end = new Date(endDate);
             end.setHours(24, 0, 0, 0);
             query.createdAt.$lt = end
@@ -76,16 +77,15 @@ const getDoctors = async (filters) => {
             page,
             limit,
             total,
-            totalPages: Math.ceil(total/limit)
+            totalPages: Math.ceil(total / limit)
         }
     }
 };
 
 const getDoctorById = async (id) => {
-    console.log({id});
-    const doctor = await Doctor.findOne({_id: id});
+    const doctor = await Doctor.findOne({ _id: id });
 
-    if(!doctor){
+    if (!doctor) {
         throw new AppError("Doctor not found!", 404);
     }
 
@@ -94,20 +94,38 @@ const getDoctorById = async (id) => {
 
 const updateDoctor = async (id, data) => {
     try {
-        const doctor = Doctor.findByIdAndUpdate(id, data, { new: true, runValidators: true });
+        const doctor = Doctor.findByIdAndUpdate(id, data, { returnDocument: "after", runValidators: true });
 
-        if(!doctor){
+        if (!doctor) {
             throw new AppError("No Doctor found to update", 404);
         }
 
         return doctor;
     } catch (error) {
-        if(error.code === 11000){
+        if (error.code === 11000) {
             throw new AppError("Doctor email aleady exists", 409);
         }
 
         throw error;
     }
+}
+
+const deleteDoctor = async (id) => {
+    const doctor = await Doctor.findById(id);
+
+    if (!doctor) {
+        throw new AppError("No Doctor found to Delete!", 404);
+    }
+
+    const patientCount = await Patient.countDocuments({ doctor: id });
+
+    if (patientCount > 0) {
+        throw new AppError("Cannot delete doctor because patients are assigned to this doctor", 409);
+    }
+
+    await Doctor.findByIdAndDelete(id);
+
+    return doctor;
 }
 
 
@@ -118,4 +136,5 @@ module.exports = {
     getDoctors,
     getDoctorById,
     updateDoctor,
+    deleteDoctor
 }
